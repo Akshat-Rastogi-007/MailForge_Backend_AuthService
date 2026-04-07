@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MailForge Auth — Test Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #07070f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ─── Ambient background glow ─── */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -30%; left: -10%;
+            width: 60%; height: 60%;
+            background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -30%; right: -10%;
+            width: 60%; height: 60%;
+            background: radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ─── Views ─── */
+        .view {
+            display: none;
+            position: relative;
+            z-index: 1;
+            animation: fadeSlideIn 0.4s ease;
+        }
+        .view.active { display: block; }
+
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ═══════════════════════════════
+           LOGIN VIEW
+           ═══════════════════════════════ */
+        .login-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            background: rgba(18, 18, 35, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            border-radius: 24px;
+            padding: 48px 36px 40px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 0 100px rgba(99,102,241,0.05);
+        }
+
+        .login-card .logo {
+            font-size: 2rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, #818cf8, #a78bfa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .login-card .tagline {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.8rem;
+            margin-bottom: 36px;
+        }
+
+        .form-group { margin-bottom: 18px; }
+
+        label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #9ca3af;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            background: rgba(7, 7, 15, 0.6);
+            border: 1px solid #2a2a40;
+            border-radius: 12px;
+            padding: 13px 16px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+        input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.25s;
+            letter-spacing: 0.3px;
+        }
+        .btn:active { transform: scale(0.98); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #7c3aed);
+            color: white;
+            box-shadow: 0 4px 16px rgba(99,102,241,0.25);
+        }
+        .btn-primary:hover {
+            box-shadow: 0 6px 28px rgba(99,102,241,0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: white;
+            box-shadow: 0 4px 16px rgba(16,185,129,0.2);
+        }
+        .btn-success:hover {
+            box-shadow: 0 6px 28px rgba(16,185,129,0.35);
+            transform: translateY(-1px);
+        }
+
+        .login-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 0.8rem;
+            color: #f87171;
+            margin-bottom: 18px;
+            display: none;
+        }
+
+        /* ═══════════════════════════════
+           DASHBOARD VIEW
+           ═══════════════════════════════ */
+        .dashboard {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 32px 24px 60px;
+        }
+
+        .dash-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .dash-brand {
+            font-size: 1.3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .dash-user-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .user-badge {
+            background: rgba(99,102,241,0.1);
+            border: 1px solid rgba(99,102,241,0.2);
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #a5b4fc;
+        }
+
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 10px;
+            padding: 8px 18px;
+            color: #f87171;
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(18, 18, 35, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid #1e1e35;
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 24px;
+            transition: border-color 0.3s;
+        }
+        .card:hover { border-color: rgba(99,102,241,0.25); }
+
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .card-desc {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+
+        /* SSE Status */
+        .sse-status-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        .sse-status-bar.connected {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+        .sse-status-bar.disconnected {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+        }
+        .sse-status-bar.connecting {
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+        }
+
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        .dot-off   { background: #4b5563; }
+        .dot-on    { background: #34d399; animation: pulse 1.5s infinite; }
+        .dot-loading { background: #818cf8; animation: pulse 0.8s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
+            50%      { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+        }
+
+        .sse-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .btn-sm {
+            padding: 10px 22px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-connect {
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: white;
+        }
+        .btn-connect:hover:not(:disabled) { box-shadow: 0 4px 16px rgba(16,185,129,0.3); }
+
+        .btn-disconnect {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+        .btn-disconnect:hover:not(:disabled) { background: rgba(239, 68, 68, 0.25); }
+
+        /* Log Box */
+        .log-box {
+            background: rgba(7, 7, 15, 0.5);
+            border: 1px solid #1a1a2e;
+            border-radius: 12px;
+            padding: 16px;
+            max-height: 280px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            line-height: 1.8;
+        }
+        .log-box::-webkit-scrollbar { width: 6px; }
+        .log-box::-webkit-scrollbar-track { background: transparent; }
+        .log-box::-webkit-scrollbar-thumb {
+            background: #2a2a40;
+            border-radius: 3px;
+        }
+
+        .log-entry { padding: 2px 0; border-bottom: 1px solid rgba(26,26,46,0.5); }
+        .log-entry:last-child { border-bottom: none; }
+        .log-time    { color: #4b5563; }
+        .log-info    { color: #60a5fa; }
+        .log-success { color: #34d399; }
+        .log-error   { color: #f87171; }
+        .log-warn    { color: #fbbf24; }
+        .log-otp {
+            color: #c084fc;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 8px 0;
+            letter-spacing: 4px;
+        }
+
+        /* OTP Notification Card */
+        .otp-notification {
+            background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(99,102,241,0.08));
+            border: 1px solid rgba(168,85,247,0.25);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+            animation: fadeSlideIn 0.4s ease;
+        }
+
+        .otp-notification .otp-header {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #c084fc;
+            margin-bottom: 6px;
+        }
+        .otp-notification .otp-device-info {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-bottom: 12px;
+        }
+        .otp-notification .otp-code {
+            font-family: 'Courier New', monospace;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: 10px;
+            color: #e9d5ff;
+            text-align: center;
+            padding: 14px;
+            background: rgba(7,7,15,0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(168,85,247,0.2);
+        }
+
+        /* Session Info */
+        .session-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .info-chip {
+            background: rgba(7,7,15,0.4);
+            border: 1px solid #1a1a2e;
+            border-radius: 10px;
+            padding: 12px 16px;
+        }
+        .info-chip .chip-label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        .info-chip .chip-value {
+            font-size: 0.8rem;
+            color: #a5b4fc;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .clear-log-btn {
+            margin-top: 12px;
+            background: transparent;
+            border: 1px solid #2a2a40;
+            border-radius: 8px;
+            padding: 6px 16px;
+            color: #6b7280;
+            font-size: 0.7rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .clear-log-btn:hover {
+            border-color: #4b5563;
+            color: #9ca3af;
+        }
+
+        /* ═══════════════════════════════
+           OTP VERIFICATION VIEW
+           ═══════════════════════════════ */
+        .otp-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .otp-card {
+            width: 100%;
+            max-width: 440px;
+            background: rgba(18, 18, 35, 0.7);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(99,102,241,0.15);
+            border-radius: 24px;
+            padding: 48px 36px 40px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+
+        .otp-card .shield-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+
+        .otp-card h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .otp-card .otp-subtitle {
+            color: #6b7280;
+            font-size: 0.8rem;
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+
+        .otp-input {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: 14px;
+            padding: 16px;
+            background: rgba(7,7,15,0.6);
+            border: 2px solid #2a2a40;
+            border-radius: 14px;
+            color: #e9d5ff;
+            width: 100%;
+            font-family: 'Courier New', monospace;
+            outline: none;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+        .otp-input:focus {
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15);
+        }
+
+        .otp-meta {
+            margin: 20px 0 28px;
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+        .otp-meta span { color: #a5b4fc; font-weight: 600; }
+
+        .otp-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.8rem;
+            color: #f87171;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #6b7280;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: #a5b4fc; }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 640px) {
+            .session-info { grid-template-columns: 1fr; }
+            .dash-header { flex-direction: column; gap: 12px; }
+            .login-card, .otp-card { padding: 36px 24px 32px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     VIEW 1: LOGIN
+     ═══════════════════════════════════════ -->
+<div id="viewLogin" class="view">
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="logo">🔐 MailForge</div>
+            <p class="tagline">Sign in to your account</p>
+
+            <div id="loginError" class="login-error"></div>
+
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="e.g. john@mailforge.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="••••••••">
+            </div>
+
+            <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">Sign In</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     VIEW 2: OTP VERIFICATION
+     ═══════════════════════════════════════ -->
+<div id="viewOtp" class="view">
+    <div class="otp-wrapper">
+        <div class="otp-card">
+            <div class="shield-icon">🛡️</div>
+            <h2>Two-Factor Authentication</h2>
+            <p class="otp-subtitle">
+                A login OTP has been sent to your primary device.<br>
+                Enter it below to verify your identity.
+            </p>
+
+            <div id="otpError" class="otp-error"></div>
+
+            <input type="text" id="otpCode" class="otp-input" placeholder="000000" maxlength="6" autocomplete="off">
+
+            <div class="otp-meta">
+                Request ID: <span id="otpRequestIdDisplay">—</span>
+            </div>
+
+            <button class="btn btn-success" id="otpVerifyBtn" onclick="doVerifyOtp()">Verify & Login</button>
+
+            <div class="back-link" onclick="showView('viewLogin')">← Back to Login</div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     VIEW 3: DASHBOARD (Primary Device)
+     ═══════════════════════════════════════ -->
+<div id="viewDashboard" class="view">
+    <div class="dashboard">
+
+        <!-- Header -->
+        <div class="dash-header">
+            <div class="dash-brand">🔐 MailForge Console</div>
+            <div class="dash-user-info">
+                <div class="user-badge" id="dashUsername">—</div>
+                <button class="btn-logout" onclick="doLogout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Session Info -->
+        <div class="card">
+            <div class="card-title">👤 Session Info</div>
+            <div class="card-desc">Your current authenticated session</div>
+            <div class="session-info">
+                <div class="info-chip">
+                    <div class="chip-label">User ID</div>
+                    <div class="chip-value" id="dashUserId">—</div>
+                </div>
+                <div class="info-chip">
+                    <div class="chip-label">Primary Device</div>
+                    <div class="chip-value" id="dashDeviceId">—</div>
+                </div>
+                <div class="info-chip">
+                    <div class="chip-label">2FA Enabled</div>
+                    <div class="chip-value" id="dashTfe">—</div>
+                </div>
+                <div class="info-chip">
+                    <div class="chip-label">Status</div>
+                    <div class="chip-value" id="dashStatus">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SSE Listener -->
+        <div class="card">
+            <div class="card-title">
+                <span class="status-dot dot-off" id="sseDot"></span>
+                📡 Primary Device — Live Listener
+            </div>
+            <div class="card-desc">Receives real-time OTP notifications when someone logs in from a new device</div>
+
+            <div class="sse-status-bar disconnected" id="sseStatusBar">
+                <span id="sseStatusText">Disconnected</span>
+            </div>
+
+            <div class="sse-controls">
+                <button class="btn-sm btn-connect" id="sseConnectBtn" onclick="doSseConnect()">Connect</button>
+                <button class="btn-sm btn-disconnect" id="sseDisconnectBtn" onclick="doSseDisconnect()" disabled>Disconnect</button>
+            </div>
+
+            <!-- OTP notifications appear here -->
+            <div id="otpNotifications"></div>
+
+            <div class="log-box" id="sseLog">
+                <div class="log-entry"><span class="log-time">[--:--:--]</span> <span class="log-info">Waiting for connection...</span></div>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="card">
+            <div class="card-title">📋 Activity Log</div>
+            <div class="card-desc">All API requests and responses</div>
+            <div class="log-box" id="activityLog">
+                <div class="log-entry"><span class="log-time">[--:--:--]</span> <span class="log-info">Ready.</span></div>
+            </div>
+            <button class="clear-log-btn" onclick="clearLogs()">Clear Logs</button>
+        </div>
+
+    </div>
+</div>
+
+
+<script>
+    // ═══════════════════════════════════
+    // STATE & CONFIG
+    // ═══════════════════════════════════
+    const BASE = '';
+    const STORAGE_KEY = 'mailforge_session';
+    let eventSource = null;
+
+    // ── Session helpers ──
+    function saveSession(data) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function getSession() {
+        try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY));
+        } catch { return null; }
+    }
+
+    function clearSession() {
+        localStorage.removeItem(STORAGE_KEY);
+    }
+
+    // ── Logging helpers ──
+    function time() {
+        return new Date().toLocaleTimeString('en-GB');
+    }
+
+    function log(target, msg, cls = 'log-info') {
+        const box = document.getElementById(target);
+        if (!box) return;
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<span class="log-time">[${time()}]</span> <span class="${cls}">${msg}</span>`;
+        box.appendChild(entry);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function alog(msg, cls) { log('activityLog', msg, cls); }
+    function slog(msg, cls) { log('sseLog', msg, cls); }
+
+    function clearLogs() {
+        document.getElementById('activityLog').innerHTML = '';
+        alog('Logs cleared.', 'log-info');
+    }
+
+    // ── View navigation ──
+    function showView(viewId) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+    }
+
+
+    // ═══════════════════════════════════
+    // LOGIN
+    // ═══════════════════════════════════
+    async function doLogin() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const errBox = document.getElementById('loginError');
+        errBox.style.display = 'none';
+
+        if (!username || !password) {
+            errBox.textContent = 'Please enter both username and password.';
+            errBox.style.display = 'block';
+            return;
+        }
+
+        const btn = document.getElementById('loginBtn');
+        btn.textContent = 'Signing in...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`${BASE}/app/v1/public/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ username, password, saveDevice: false })
+            });
+
+            const json = await res.json();
+            const data = json.data || json;
+
+            if (!res.ok) {
+                errBox.textContent = data.message || data.error || 'Login failed. Check your credentials.';
+                errBox.style.display = 'block';
+                return;
+            }
+
+            if (data.status === 'SUCCESS') {
+                // Logged in — save session
+                const session = {
+                    token: data.token,
+                    username: username,
+                    userId: data.responseDto?.id || '—',
+                    tfe: data.responseDto?.tfe,
+                    accountStatus: data.responseDto?.status || '—',
+                    primaryDeviceId: data.responseDto?.primaryDeviceID || null,
+                };
+
+                // Try to get device_id from cookie
+                const deviceCookie = getCookie('device_id');
+                if (deviceCookie) session.primaryDeviceId = deviceCookie;
+
+                saveSession(session);
+                enterDashboard(session);
+
+            } else if (data.status === 'WAITING_APPROVAL') {
+                // 2FA required
+                window._otpContext = {
+                    username: username,
+                    requestId: data.requestId
+                };
+
+                document.getElementById('otpRequestIdDisplay').textContent = data.requestId || '—';
+                showView('viewOtp');
+                document.getElementById('otpCode').focus();
+            }
+
+        } catch (err) {
+            errBox.textContent = 'Network error: ' + err.message;
+            errBox.style.display = 'block';
+        } finally {
+            btn.textContent = 'Sign In';
+            btn.disabled = false;
+        }
+    }
+
+
+    // ═══════════════════════════════════
+    // OTP VERIFICATION
+    // ═══════════════════════════════════
+    async function doVerifyOtp() {
+        const otp = document.getElementById('otpCode').value.trim();
+        const errBox = document.getElementById('otpError');
+        errBox.style.display = 'none';
+
+        if (!otp || otp.length < 4) {
+            errBox.textContent = 'Please enter a valid OTP code.';
+            errBox.style.display = 'block';
+            return;
+        }
+
+        const ctx = window._otpContext;
+        if (!ctx) {
+            errBox.textContent = 'Session expired. Please login again.';
+            errBox.style.display = 'block';
+            return;
+        }
+
+        const btn = document.getElementById('otpVerifyBtn');
+        btn.textContent = 'Verifying...';
+        btn.disabled = true;
+
+        const url = `${BASE}/app/v1/public/login/verify-otp?username=${encodeURIComponent(ctx.username)}&otp=${encodeURIComponent(otp)}&requestId=${encodeURIComponent(ctx.requestId)}`;
+
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                credentials: 'include'
+            });
+
+            const json = await res.json();
+            const data = json.data || json;
+
+            if (!res.ok) {
+                errBox.textContent = data.message || data.error || 'Invalid or expired OTP.';
+                errBox.style.display = 'block';
+                return;
+            }
+
+            if (data.token) {
+                const session = {
+                    token: data.token,
+                    username: ctx.username,
+                    userId: data.responseDto?.id || '—',
+                    tfe: data.responseDto?.tfe,
+                    accountStatus: data.responseDto?.status || '—',
+                    primaryDeviceId: data.responseDto?.primaryDeviceID || null,
+                };
+
+                const deviceCookie = getCookie('device_id');
+                if (deviceCookie) session.primaryDeviceId = deviceCookie;
+
+                saveSession(session);
+                enterDashboard(session);
+            }
+
+        } catch (err) {
+            errBox.textContent = 'Network error: ' + err.message;
+            errBox.style.display = 'block';
+        } finally {
+            btn.textContent = 'Verify & Login';
+            btn.disabled = false;
+        }
+    }
+
+
+    // ═══════════════════════════════════
+    // DASHBOARD
+    // ═══════════════════════════════════
+    function enterDashboard(session) {
+        showView('viewDashboard');
+
+        document.getElementById('dashUsername').textContent = session.username;
+        document.getElementById('dashUserId').textContent = session.userId || '—';
+        document.getElementById('dashDeviceId').textContent = session.primaryDeviceId || 'N/A';
+        document.getElementById('dashTfe').textContent = session.tfe ? 'Yes' : 'No';
+        document.getElementById('dashStatus').textContent = session.accountStatus || '—';
+
+        alog(`Session restored for user: ${session.username}`, 'log-success');
+
+        // Auto-connect SSE if primary device exists
+        if (session.primaryDeviceId && session.token) {
+            setTimeout(() => doSseConnect(), 500);
+        }
+    }
+
+
+    // ═══════════════════════════════════
+    // SSE CONNECTION
+    // ═══════════════════════════════════
+    function setSseStatus(status) {
+        const bar = document.getElementById('sseStatusBar');
+        const dot = document.getElementById('sseDot');
+        const txt = document.getElementById('sseStatusText');
+
+        bar.className = 'sse-status-bar ' + status;
+
+        if (status === 'connected') {
+            dot.className = 'status-dot dot-on';
+            txt.textContent = 'Connected — Listening for notifications';
+        } else if (status === 'connecting') {
+            dot.className = 'status-dot dot-loading';
+            txt.textContent = 'Connecting...';
+        } else {
+            dot.className = 'status-dot dot-off';
+            txt.textContent = 'Disconnected';
+        }
+    }
+
+    async function doSseConnect() {
+        const session = getSession();
+        if (!session || !session.primaryDeviceId || !session.token) {
+            slog('No primary device ID or token. Cannot connect.', 'log-error');
+            return;
+        }
+
+        if (eventSource) doSseDisconnect();
+
+        setSseStatus('connecting');
+        document.getElementById('sseConnectBtn').disabled = true;
+        document.getElementById('sseDisconnectBtn').disabled = false;
+
+        const deviceId = session.primaryDeviceId;
+        const url = `${BASE}/app/v1/sse/subscribe/${encodeURIComponent(deviceId)}`;
+        slog(`Connecting to SSE as device: ${deviceId}...`, 'log-info');
+        alog(`SSE GET ${url}`, 'log-info');
+
+        try {
+            const response = await fetch(url, {
+                headers: { 'Authorization': 'Bearer ' + session.token }
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                slog(`Connection failed: ${response.status} — ${text}`, 'log-error');
+                alog(`SSE failed: ${response.status}`, 'log-error');
+                setSseStatus('disconnected');
+                document.getElementById('sseConnectBtn').disabled = false;
+                document.getElementById('sseDisconnectBtn').disabled = true;
+                return;
+            }
+
+            setSseStatus('connected');
+            slog(`✅ Connected — listening on device: ${deviceId}`, 'log-success');
+            alog(`SSE connected for ${deviceId}`, 'log-success');
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            eventSource = { reader, active: true };
+
+            while (eventSource.active) {
+                const { value, done } = await reader.read();
+                if (done) {
+                    slog('Connection closed by server.', 'log-warn');
+                    break;
+                }
+
+                buffer += decoder.decode(value, { stream: true });
+
+                const events = buffer.split('\n\n');
+                buffer = events.pop();
+
+                for (const event of events) {
+                    if (!event.trim()) continue;
+
+                    const lines = event.split('\n');
+                    let eventName = '';
+                    let eventData = '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('event:')) eventName = line.substring(6).trim();
+                        else if (line.startsWith('data:')) eventData = line.substring(5).trim();
+                    }
+
+                    slog(`Event: <strong>${eventName || 'message'}</strong>`, 'log-info');
+
+                    if (eventName === 'LOGIN_OTP') {
+                        try {
+                            const payload = JSON.parse(eventData);
+                            showOtpNotification(payload);
+                            slog(`🔔 Login attempt from <strong>${payload.deviceInfo}</strong> (${payload.ip})`, 'log-warn');
+                            slog(`🔑 OTP: <strong>${payload.otp}</strong>`, 'log-otp');
+                            alog(`SSE → LOGIN_OTP: ${payload.otp} from ${payload.deviceInfo}`, 'log-success');
+                        } catch (e) {
+                            slog(`Data: ${eventData}`, 'log-info');
+                        }
+                    } else {
+                        slog(`Data: ${eventData}`, 'log-info');
+                    }
+                }
+            }
+
+        } catch (err) {
+            if (eventSource && eventSource.active) {
+                slog(`Error: ${err.message}`, 'log-error');
+            }
+        } finally {
+            setSseStatus('disconnected');
+            document.getElementById('sseConnectBtn').disabled = false;
+            document.getElementById('sseDisconnectBtn').disabled = true;
+        }
+    }
+
+    function doSseDisconnect() {
+        if (eventSource) {
+            eventSource.active = false;
+            eventSource.reader.cancel().catch(() => {});
+            eventSource = null;
+            slog('Disconnected.', 'log-warn');
+            alog('SSE disconnected.', 'log-warn');
+        }
+        setSseStatus('disconnected');
+        document.getElementById('sseConnectBtn').disabled = false;
+        document.getElementById('sseDisconnectBtn').disabled = true;
+    }
+
+    function showOtpNotification(payload) {
+        const container = document.getElementById('otpNotifications');
+        const card = document.createElement('div');
+        card.className = 'otp-notification';
+        card.innerHTML = `
+            <div class="otp-header">🔔 New Login Attempt — ${time()}</div>
+            <div class="otp-device-info">${payload.deviceInfo || 'Unknown device'} • ${payload.ip || 'Unknown IP'}</div>
+            <div class="otp-code">${payload.otp}</div>
+        `;
+        container.prepend(card);
+
+        // Keep only last 5
+        while (container.children.length > 5) {
+            container.removeChild(container.lastChild);
+        }
+    }
+
+
+    // ═══════════════════════════════════
+    // LOGOUT
+    // ═══════════════════════════════════
+    function doLogout() {
+        doSseDisconnect();
+        clearSession();
+        window._otpContext = null;
+
+        // Reset forms
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        document.getElementById('otpCode').value = '';
+        document.getElementById('otpNotifications').innerHTML = '';
+        document.getElementById('sseLog').innerHTML = '';
+        document.getElementById('activityLog').innerHTML = '';
+        document.getElementById('loginError').style.display = 'none';
+        document.getElementById('otpError').style.display = 'none';
+
+        showView('viewLogin');
+    }
+
+
+    // ═══════════════════════════════════
+    // UTILS
+    // ═══════════════════════════════════
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? match[2] : null;
+    }
+
+
+    // ═══════════════════════════════════
+    // KEYBOARD SHORTCUTS
+    // ═══════════════════════════════════
+    document.getElementById('password').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doLogin();
+    });
+    document.getElementById('otpCode').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doVerifyOtp();
+    });
+
+
+    // ═══════════════════════════════════
+    // INIT — restore session on page load
+    // ═══════════════════════════════════
+    (function init() {
+        const session = getSession();
+        if (session && session.token) {
+            enterDashboard(session);
+        } else {
+            showView('viewLogin');
+        }
+    })();
+
+</script>
+
+</body>
+</html>
