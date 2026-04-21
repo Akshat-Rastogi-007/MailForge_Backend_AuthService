@@ -16,6 +16,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
+/**
+ * Security Configuration for Auth Service
+ * - Public: registration, login, health, swagger
+ * - Authenticated: SSE, user profile operations
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -34,14 +39,22 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
         return http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(request -> request
+                        // Health & monitoring
+                        .requestMatchers("/actuator/**", "/health").permitAll()
+                        // Swagger / OpenAPI
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        // Public auth endpoints — registration, login, OTP
                         .requestMatchers("/app/v1/public/**").permitAll()
-                        .requestMatchers("/app/v1/user/**").permitAll()
+                        .requestMatchers("/app/v1/user/create", "/app/v1/user/verify", "/app/v1/user/resend-otp").permitAll()
+                        // Protected user endpoints — require JWT
+                        .requestMatchers("/app/v1/user/**").authenticated()
+                        // SSE — require JWT
                         .requestMatchers("/app/v1/sse/**").authenticated()
-                        .anyRequest().permitAll())
+                        // Everything else — require JWT
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
